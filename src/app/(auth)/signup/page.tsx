@@ -58,8 +58,11 @@ export default function SignupPage() {
     setResetMessage(null);
 
     const supabase = createClient();
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const redirectBase = siteUrl.replace(/\/$/, "");
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${redirectBase}/reset-password`,
     });
 
     if (error) {
