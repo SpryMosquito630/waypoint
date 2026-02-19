@@ -38,7 +38,17 @@ export function useTasks(playerId: string | null) {
 
   const createTask = useCallback(
     async (data: TaskFormData) => {
-      if (!playerId) return;
+      if (!playerId) {
+        return {
+          task: null,
+          error: { message: "Missing player id" } as {
+            message: string;
+            details?: string;
+            hint?: string;
+            code?: string;
+          },
+        };
+      }
       const supabase = createClient();
       const hasDeadline = !!data.deadline;
       const noDeadlineFallback = "2099-12-31T23:59:59.000Z";
