@@ -154,7 +154,11 @@ function Mushroom({ position }: { position: [number, number, number] }) {
   );
 }
 
-function FollowCamera({ targetRef }: { targetRef: RefObject<THREE.Group> }) {
+function FollowCamera({
+  targetRef,
+}: {
+  targetRef: RefObject<THREE.Group | null>;
+}) {
   const { camera } = useThree();
   const smoothPos = useRef(new THREE.Vector3());
   const smoothLook = useRef(new THREE.Vector3());

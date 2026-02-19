@@ -7,7 +7,7 @@ import { RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
 
 interface Vehicle3DProps {
-  groupRef: RefObject<THREE.Group>;
+  groupRef: RefObject<THREE.Group | null>;
   isMoving: boolean;
 }
 
