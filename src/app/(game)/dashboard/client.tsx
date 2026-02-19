@@ -2,12 +2,13 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useGameRealtime } from "@/hooks/use-game-realtime";
 import { useGameStore } from "@/stores/game-store";
 import { findCratesInRange } from "@/lib/game/engine";
-import { InfiniteStrip } from "@/components/game/InfiniteStrip";
+import { ThreeWorld } from "@/components/game/ThreeWorld";
+import { BountyBoard } from "@/components/game/BountyBoard";
 import { ProgressBar } from "@/components/game/ProgressBar";
 import { CrateReveal } from "@/components/game/CrateReveal";
 import { TaskList } from "@/components/tasks/TaskList";
@@ -33,9 +34,16 @@ export function DashboardClient({
   const totalDistance = useGameStore((s) => s.totalDistance);
   const playerSeed = useGameStore((s) => s.playerSeed);
   const syncFromDB = useGameStore((s) => s.syncFromDB);
+  const hasSynced = useGameStore((s) => s.hasSynced);
   const [crateReward, setCrateReward] = useState<LootResult | null>(null);
   const [rewardQueue, setRewardQueue] = useState<LootResult[]>([]);
   const prevPositionRef = useRef<number | null>(null);
+  const prevHasSyncedRef = useRef(false);
+  const searchParams = useSearchParams();
+  const modeParam = searchParams.get("mode");
+  const [mode, setMode] = useState<"drive" | "bounty">(
+    modeParam === "drive" ? "drive" : "bounty"
+  );
 
   // Subscribe to realtime game state
   useGameRealtime(userId);
@@ -61,6 +69,16 @@ export function DashboardClient({
   );
 
   useEffect(() => {
+    if (hasSynced && !prevHasSyncedRef.current) {
+      prevHasSyncedRef.current = true;
+      prevPositionRef.current = vehiclePosition;
+      return;
+    }
+    if (!hasSynced) {
+      prevPositionRef.current = vehiclePosition;
+      return;
+    }
+
     if (prevPositionRef.current === null) {
       prevPositionRef.current = vehiclePosition;
       return;
@@ -116,17 +134,27 @@ export function DashboardClient({
             <span className="text-sm text-zinc-400">{displayName}</span>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 text-sm">
-              <Link
-                href="/rewards"
-                className="text-zinc-400 hover:text-blue-300 transition-colors"
-              >
-                <span className="text-blue-400 font-medium">
-                  {scrapCount + boostCount}
-                </span>{" "}
-                Rewards
-              </Link>
-            </div>
+            <button
+              onClick={() =>
+                setMode((m) => (m === "drive" ? "bounty" : "drive"))
+              }
+              className="text-xs rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-blue-200 hover:bg-blue-500/20 transition-colors"
+            >
+              Switch Mode
+            </button>
+            {mode === "drive" && (
+              <div className="flex items-center gap-3 text-sm">
+                <Link
+                  href="/rewards"
+                  className="text-zinc-400 hover:text-blue-300 transition-colors"
+                >
+                  <span className="text-blue-400 font-medium">
+                    {scrapCount + boostCount}
+                  </span>{" "}
+                  Rewards
+                </Link>
+              </div>
+            )}
             <button
               onClick={handleLogout}
               className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
@@ -139,17 +167,25 @@ export function DashboardClient({
 
       {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-        {/* Game Strip */}
-        <InfiniteStrip />
+        {/* World View */}
+        {mode === "drive" ? (
+          <ThreeWorld />
+        ) : (
+          <BountyBoard playerId={userId} />
+        )}
 
-        {/* Stats row */}
-        <div className="flex items-center justify-between text-sm text-zinc-400">
-          <span>Position: {vehiclePosition}</span>
-          <span>Total distance: {totalDistance}</span>
-        </div>
+        {mode === "drive" && (
+          <>
+            {/* Stats row */}
+            <div className="flex items-center justify-between text-sm text-zinc-400">
+              <span>Position: {vehiclePosition}</span>
+              <span>Total distance: {totalDistance}</span>
+            </div>
 
-        {/* Weekly progress */}
-        <ProgressBar />
+            {/* Weekly progress */}
+            <ProgressBar />
+          </>
+        )}
 
         {/* Parent invite code (if role is parent) */}
         {role === "parent" && inviteCode && (
@@ -165,7 +201,7 @@ export function DashboardClient({
         )}
 
         {/* Task List */}
-        <TaskList playerId={userId} />
+        {mode === "drive" && <TaskList playerId={userId} />}
       </main>
 
       {/* Crate reveal overlay */}

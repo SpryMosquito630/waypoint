@@ -22,6 +22,10 @@ export function TaskForm({
   const [deadline, setDeadline] = useState("");
   const [isPermanent, setIsPermanent] = useState(defaultPermanent);
   const [difficulty, setDifficulty] = useState<1 | 2 | 3>(1);
+  const [repeatInterval, setRepeatInterval] = useState<1 | 7 | 30>(7);
+  const [repeatTime, setRepeatTime] = useState("08:00");
+  const [repeatWeekday, setRepeatWeekday] = useState("mon");
+  const [repeatMonthDay, setRepeatMonthDay] = useState("1");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -29,12 +33,21 @@ export function TaskForm({
     e.preventDefault();
     setLoading(true);
     setError(null);
+    const repeatAnchor =
+      repeatInterval === 1
+        ? `time:${repeatTime}`
+        : repeatInterval === 7
+          ? `${repeatWeekday}@${repeatTime}`
+          : `${repeatMonthDay}@${repeatTime}`;
+
     const result = await onSubmit({
       title,
       description: description || undefined,
       deadline: deadline ? new Date(deadline).toISOString() : undefined,
       difficulty,
       is_permanent: isPermanent,
+      repeat_interval_days: isPermanent ? repeatInterval : undefined,
+      repeat_anchor: isPermanent ? repeatAnchor : undefined,
     });
     if (result?.error) {
       setError(result.error);
@@ -105,6 +118,74 @@ export function TaskForm({
           />
         </button>
       </div>
+
+      {isPermanent && (
+        <div className="space-y-2">
+          <Label className="text-zinc-300">Repeat frequency</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "Daily", value: 1 as const },
+              { label: "Weekly", value: 7 as const },
+              { label: "Monthly", value: 30 as const },
+            ].map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setRepeatInterval(option.value)}
+                className={`p-2 rounded-lg border text-sm font-medium transition-colors ${
+                  repeatInterval === option.value
+                    ? "border-blue-500 bg-blue-500/10 text-blue-400"
+                    : "border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isPermanent && (
+        <div className="space-y-2">
+          <Label className="text-zinc-300">Specific time</Label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {repeatInterval === 7 && (
+              <select
+                value={repeatWeekday}
+                onChange={(e) => setRepeatWeekday(e.target.value)}
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white"
+              >
+                <option value="mon">Monday</option>
+                <option value="tue">Tuesday</option>
+                <option value="wed">Wednesday</option>
+                <option value="thu">Thursday</option>
+                <option value="fri">Friday</option>
+                <option value="sat">Saturday</option>
+                <option value="sun">Sunday</option>
+              </select>
+            )}
+            {repeatInterval === 30 && (
+              <select
+                value={repeatMonthDay}
+                onChange={(e) => setRepeatMonthDay(e.target.value)}
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white"
+              >
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                  <option key={day} value={String(day)}>
+                    Day {day}
+                  </option>
+                ))}
+              </select>
+            )}
+            <input
+              type="time"
+              value={repeatTime}
+              onChange={(e) => setRepeatTime(e.target.value)}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white"
+            />
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label className="text-zinc-300">

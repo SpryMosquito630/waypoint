@@ -6,6 +6,14 @@ import { useTaskStore } from "@/stores/task-store";
 import { useGameStore } from "@/stores/game-store";
 import type { Task, TaskFormData } from "@/types/task";
 import type { GameState } from "@/types/game";
+import { isRepeatDue } from "@/lib/tasks/repeat";
+
+const defaultRepeatAnchor = (intervalDays?: number) => {
+  if (intervalDays === 1) return "time:08:00";
+  if (intervalDays === 7) return "mon@08:00";
+  if (intervalDays === 30) return "1@08:00";
+  return null;
+};
 
 export function useTasks(playerId: string | null) {
   const { setTasks, addTask, updateTask, removeTask, setLoading, tasks } =
@@ -42,6 +50,12 @@ export function useTasks(playerId: string | null) {
         deadline: data.deadline || null,
         difficulty: data.difficulty,
         is_permanent: data.is_permanent,
+        repeat_interval_days: data.is_permanent
+          ? data.repeat_interval_days ?? 7
+          : null,
+        repeat_anchor: data.is_permanent
+          ? data.repeat_anchor ?? defaultRepeatAnchor(data.repeat_interval_days)
+          : null,
       };
 
       let { data: task, error } = await supabase
@@ -55,6 +69,8 @@ export function useTasks(playerId: string | null) {
       const missingDeadline =
         !!error &&
         error.message?.includes('null value in column "deadline"');
+      const missingRepeatInterval =
+        !!error && error.message?.includes("repeat_interval_days");
 
       if (missingColumn && data.is_permanent) {
         return {
@@ -78,6 +94,13 @@ export function useTasks(playerId: string | null) {
             deadline: noDeadlineFallback,
             difficulty: data.difficulty,
             is_permanent: data.is_permanent,
+            repeat_interval_days: data.is_permanent
+              ? data.repeat_interval_days ?? 7
+              : null,
+            repeat_anchor: data.is_permanent
+              ? data.repeat_anchor ??
+                defaultRepeatAnchor(data.repeat_interval_days)
+              : null,
           })
           .select()
           .single();
@@ -95,6 +118,31 @@ export function useTasks(playerId: string | null) {
             description: data.description || null,
             deadline: data.deadline || (hasDeadline ? null : noDeadlineFallback),
             difficulty: data.difficulty,
+          })
+          .select()
+          .single();
+        task = retryTask ?? null;
+        error = retryError ?? null;
+      }
+
+      if (missingRepeatInterval) {
+        const { data: retryTask, error: retryError } = await supabase
+          .from("tasks")
+          .insert({
+            player_id: playerId,
+            created_by: playerId,
+            title: data.title,
+            description: data.description || null,
+            deadline: data.deadline || (hasDeadline ? null : noDeadlineFallback),
+            difficulty: data.difficulty,
+            is_permanent: data.is_permanent,
+            repeat_interval_days: data.is_permanent
+              ? data.repeat_interval_days ?? 7
+              : null,
+            repeat_anchor: data.is_permanent
+              ? data.repeat_anchor ??
+                defaultRepeatAnchor(data.repeat_interval_days)
+              : null,
           })
           .select()
           .single();
@@ -125,21 +173,6 @@ export function useTasks(playerId: string | null) {
           completed_at: new Date().toISOString(),
         });
 
-        const task = tasks.find((t) => t.id === taskId);
-        if (task?.is_permanent) {
-          await supabase
-            .from("tasks")
-            .update({
-              status: "pending",
-              completed_at: null,
-            })
-            .eq("id", taskId);
-          updateTask(taskId, {
-            status: "pending",
-            completed_at: null,
-          });
-        }
-
         if (playerId) {
           const { data: gameState } = await supabase
             .from("game_state")
@@ -153,8 +186,34 @@ export function useTasks(playerId: string | null) {
       }
       return { error };
     },
-    [playerId, syncFromDB, tasks, updateTask]
+    [playerId, syncFromDB, updateTask]
   );
+
+  useEffect(() => {
+    if (!playerId || tasks.length === 0) return;
+    const supabase = createClient();
+
+    const refresh = async () => {
+      const now = new Date();
+      const due = tasks.filter(
+        (t) => t.is_permanent && t.status === "completed" && isRepeatDue(t, now)
+      );
+      if (due.length === 0) return;
+      for (const task of due) {
+        const { error } = await supabase
+          .from("tasks")
+          .update({ status: "pending" })
+          .eq("id", task.id);
+        if (!error) {
+          updateTask(task.id, { status: "pending" });
+        }
+      }
+    };
+
+    refresh();
+    const id = setInterval(refresh, 60 * 1000);
+    return () => clearInterval(id);
+  }, [playerId, tasks, updateTask]);
 
   const deleteTask = useCallback(
     async (taskId: string) => {

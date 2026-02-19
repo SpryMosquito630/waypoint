@@ -17,6 +17,9 @@ export default function SignupPage() {
   const [role, setRole] = useState<"player" | "parent">("player");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
@@ -42,6 +45,29 @@ export default function SignupPage() {
       router.push("/dashboard");
       router.refresh();
     }
+  }
+
+  async function handleResetPassword() {
+    if (!email) {
+      setResetError("Enter your email first.");
+      setResetMessage(null);
+      return;
+    }
+    setResetLoading(true);
+    setResetError(null);
+    setResetMessage(null);
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
+      setResetError("Unable to send reset link. Please try again.");
+    } else {
+      setResetMessage("Password reset link sent. Check your inbox.");
+    }
+    setResetLoading(false);
   }
 
   return (
@@ -135,6 +161,28 @@ export default function SignupPage() {
               {loading ? "Creating account..." : "Create Account"}
             </Button>
           </form>
+          <div className="mt-6 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
+            <p className="text-xs uppercase tracking-widest text-zinc-400">
+              Forgot password
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              We will send a reset link to the email above.
+            </p>
+            <Button
+              type="button"
+              onClick={handleResetPassword}
+              disabled={resetLoading}
+              className="mt-3 w-full bg-zinc-800 hover:bg-zinc-700 text-white"
+            >
+              {resetLoading ? "Sending link..." : "Send reset link"}
+            </Button>
+            {resetError && (
+              <p className="mt-2 text-xs text-red-400">{resetError}</p>
+            )}
+            {resetMessage && (
+              <p className="mt-2 text-xs text-emerald-400">{resetMessage}</p>
+            )}
+          </div>
           <p className="text-center text-zinc-500 text-sm mt-4">
             Already have an account?{" "}
             <Link href="/login" className="text-blue-500 hover:underline">

@@ -10,6 +10,8 @@ export interface Task {
   status: TaskStatus;
   difficulty: 1 | 2 | 3;
   is_permanent: boolean;
+  repeat_interval_days: number | null;
+  repeat_anchor: string | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -21,4 +23,6 @@ export interface TaskFormData {
   deadline?: string;
   difficulty: 1 | 2 | 3;
   is_permanent: boolean;
+  repeat_interval_days?: number;
+  repeat_anchor?: string;
 }

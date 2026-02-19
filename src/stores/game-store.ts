@@ -13,10 +13,14 @@ interface GameStore {
   totalDistance: number;
   scrapCount: number;
   boostCount: number;
+  coinCount: number;
+  silverCount: number;
+  goldCount: number;
   dailyTaskCount: number;
   lastStormTick: string | null;
   currentStreak: number;
   weekStartPosition: number;
+  hasSynced: boolean;
 
   // Client-only
   playerId: string | null;
@@ -42,10 +46,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   totalDistance: 0,
   scrapCount: 0,
   boostCount: 0,
+  coinCount: 0,
+  silverCount: 0,
+  goldCount: 0,
   dailyTaskCount: 0,
   lastStormTick: null,
   currentStreak: 0,
   weekStartPosition: 0,
+  hasSynced: false,
 
   // Client state
   playerId: null,
@@ -71,10 +79,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       totalDistance: dbState.total_distance,
       scrapCount: dbState.scrap_count,
       boostCount: dbState.boost_count,
+      coinCount: dbState.coin_count ?? 0,
+      silverCount: dbState.silver_count ?? 0,
+      goldCount: dbState.gold_count ?? 0,
       dailyTaskCount: dbState.daily_task_count,
       lastStormTick: dbState.last_storm_tick,
       currentStreak: dbState.current_streak,
       weekStartPosition: dbState.week_start_position,
+      hasSynced: true,
     });
 
     // Enqueue movement animation if position changed

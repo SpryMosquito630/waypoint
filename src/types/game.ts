@@ -45,6 +45,9 @@ export interface GameState {
   week_start_position: number;
   scrap_count: number;
   boost_count: number;
+  coin_count: number;
+  silver_count: number;
+  gold_count: number;
   last_storm_tick: string;
   daily_task_count: number;
   updated_at: string;

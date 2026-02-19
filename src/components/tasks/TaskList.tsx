@@ -6,6 +6,7 @@ import { useTasks } from "@/hooks/use-tasks";
 import { TaskItem } from "./TaskItem";
 import { TaskForm } from "./TaskForm";
 import { Button } from "@/components/ui/button";
+import { getDueAt, getReminderWindowMs, isRepeatDue } from "@/lib/tasks/repeat";
 
 interface TaskListProps {
   playerId: string;
@@ -17,11 +18,32 @@ export function TaskList({ playerId, mode = "all" }: TaskListProps) {
   const isLoading = useTaskStore((s) => s.isLoading);
   const { createTask, completeTask, deleteTask } = useTasks(playerId);
   const [showForm, setShowForm] = useState(false);
+  const [fadingIds, setFadingIds] = useState<string[]>([]);
 
+  const now = new Date();
   const visibleTasks =
     mode === "permanent" ? tasks.filter((t) => t.is_permanent) : tasks;
-  const pendingTasks = visibleTasks.filter((t) => t.status === "pending");
-  const completedTasks = visibleTasks.filter((t) => t.status === "completed");
+  const fadeSet = new Set(fadingIds);
+  const filteredTasks = visibleTasks.filter((t) => {
+    if (!(t.is_permanent && t.status === "completed")) return true;
+    if (isRepeatDue(t, now)) return true;
+    const dueAt = getDueAt(t, now);
+    if (!dueAt) return false;
+    return dueAt.getTime() - now.getTime() <= getReminderWindowMs(t);
+  });
+  const pendingTasks = filteredTasks.filter(
+    (t) => t.status === "pending" || fadeSet.has(t.id)
+  );
+  const completedTasks = filteredTasks.filter(
+    (t) => t.status === "completed" && !fadeSet.has(t.id)
+  );
+
+  const startFade = (id: string) => {
+    setFadingIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    window.setTimeout(() => {
+      setFadingIds((prev) => prev.filter((item) => item !== id));
+    }, 2000);
+  };
 
   return (
     <div className="space-y-3">
@@ -75,8 +97,12 @@ export function TaskList({ playerId, mode = "all" }: TaskListProps) {
               <TaskItem
                 key={task.id}
                 task={task}
-                onComplete={completeTask}
+                onComplete={(id) => {
+                  startFade(id);
+                  completeTask(id);
+                }}
                 onDelete={deleteTask}
+                isFading={fadeSet.has(task.id)}
               />
             ))}
           </div>
@@ -90,8 +116,12 @@ export function TaskList({ playerId, mode = "all" }: TaskListProps) {
                 <TaskItem
                   key={task.id}
                   task={task}
-                  onComplete={completeTask}
+                  onComplete={(id) => {
+                    startFade(id);
+                    completeTask(id);
+                  }}
                   onDelete={deleteTask}
+                  isFading={fadeSet.has(task.id)}
                 />
               ))}
             </div>

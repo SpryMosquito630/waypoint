@@ -15,6 +15,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -34,6 +37,29 @@ export default function LoginPage() {
       router.push("/dashboard");
       router.refresh();
     }
+  }
+
+  async function handleResetPassword() {
+    if (!email) {
+      setResetError("Enter your email first.");
+      setResetMessage(null);
+      return;
+    }
+    setResetLoading(true);
+    setResetError(null);
+    setResetMessage(null);
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
+      setResetError("Unable to send reset link. Please try again.");
+    } else {
+      setResetMessage("Password reset link sent. Check your inbox.");
+    }
+    setResetLoading(false);
   }
 
   return (
@@ -74,6 +100,20 @@ export default function LoginPage() {
                 required
                 className="bg-zinc-800 border-zinc-700 text-white"
               />
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                disabled={resetLoading}
+                className="text-xs text-blue-400 hover:underline disabled:opacity-60"
+              >
+                {resetLoading ? "Sending reset link..." : "Forgot password?"}
+              </button>
+              {resetError && (
+                <p className="text-xs text-red-400">{resetError}</p>
+              )}
+              {resetMessage && (
+                <p className="text-xs text-emerald-400">{resetMessage}</p>
+              )}
             </div>
             {error && (
               <p className="text-red-400 text-sm">{error}</p>

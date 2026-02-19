@@ -3,7 +3,7 @@
 import { useGameStore } from "@/stores/game-store";
 import { VEHICLE_LEVELS } from "@/lib/game/constants";
 
-export function Vehicle() {
+export function Vehicle({ isMoving }: { isMoving?: boolean }) {
   const vehicleLevel = useGameStore((s) => s.vehicleLevel);
   const currentVehicle = VEHICLE_LEVELS.findLast(
     (v) => vehicleLevel >= v.level
@@ -22,8 +22,16 @@ export function Vehicle() {
           <div className="absolute right-0 top-5 w-1.5 h-1.5 bg-blue-300 rounded-full" />
         </div>
         {/* Wheels */}
-        <div className="absolute -bottom-1.5 left-1 w-3 h-3 bg-zinc-800 rounded-full border border-zinc-600" />
-        <div className="absolute -bottom-1.5 right-1 w-3 h-3 bg-zinc-800 rounded-full border border-zinc-600" />
+        <div
+          className={`absolute -bottom-1.5 left-1 w-3 h-3 bg-zinc-800 rounded-full border border-zinc-600 ${
+            isMoving ? "wheel-spin" : ""
+          }`}
+        />
+        <div
+          className={`absolute -bottom-1.5 right-1 w-3 h-3 bg-zinc-800 rounded-full border border-zinc-600 ${
+            isMoving ? "wheel-spin" : ""
+          }`}
+        />
       </div>
       {/* Vehicle name label */}
       <span className="text-[10px] text-blue-400/80 mt-1 font-medium whitespace-nowrap">
