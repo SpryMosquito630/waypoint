@@ -29,7 +29,10 @@ export async function POST(request: Request) {
     tileIndex = undefined;
   }
 
-  if (!Number.isInteger(tileIndex) || tileIndex < 0) {
+  const parsedTileIndex =
+    typeof tileIndex === "number" ? tileIndex : Number(tileIndex);
+
+  if (!Number.isInteger(parsedTileIndex) || parsedTileIndex < 0) {
     return NextResponse.json({ error: "invalid tile index" }, { status: 400 });
   }
 
@@ -47,7 +50,7 @@ export async function POST(request: Request) {
     .from("rewards")
     .select("id, reward_type, tile_index")
     .eq("player_id", user.id)
-    .eq("tile_index", tileIndex)
+    .eq("tile_index", parsedTileIndex)
     .maybeSingle();
 
   if (existingError) {
@@ -63,16 +66,16 @@ export async function POST(request: Request) {
     };
   } else {
     const seed = getPlayerSeed(user.id);
-    const loot = rollLoot(tileIndex, seed);
+    const loot = rollLoot(parsedTileIndex, seed);
     const metadata =
       loot.type === "irl_ticket"
-        ? { description: pickTicketDescription(tileIndex, seed) }
+        ? { description: pickTicketDescription(parsedTileIndex, seed) }
         : {};
 
     const { error: insertError } = await admin.from("rewards").insert({
       player_id: user.id,
       reward_type: loot.type,
-      tile_index: tileIndex,
+      tile_index: parsedTileIndex,
       metadata,
     });
 
